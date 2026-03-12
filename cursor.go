@@ -9,6 +9,9 @@ import (
 	"reflect"
 )
 
+// ErrInvalidCursor is returned when the provided cursor is invalid.
+var ErrInvalidCursor = fmt.Errorf("invalid cursor")
+
 // Cursor keeps position of a collection between calls of repository method
 // and hides the repository implementation details.
 // Cursor allow transfer state across process boundaries.
@@ -71,6 +74,8 @@ func (cur *Cursor) IsOutOfScope() bool {
 // Get panics in case cursor misuse -
 // if cursor state was not changed on previous iteration.
 //
+// Get returns ErrInvalidCursor if the cursor cannot be unmarshalled into v.
+//
 // Don't use with Bind method.
 func (cur *Cursor) Get(v any) error {
 	return cur.Bind(v)
@@ -92,6 +97,8 @@ func (cur *Cursor) Set(v any) {
 // Bind panics in case cursor misuse -
 // if cursor state was not changed on previous iteration.
 //
+// Bind returns ErrInvalidCursor if the cursor cannot be unmarshalled into v.
+//
 // Don't use with Get/Set methods.
 func (cur *Cursor) Bind(v any) error {
 	mustBePtr(v)
@@ -108,7 +115,10 @@ func (cur *Cursor) Bind(v any) error {
 	if len(cur.b) == 0 {
 		return nil
 	}
-	return json.Unmarshal(cur.b, cur.v)
+	if err := json.Unmarshal(cur.b, cur.v); err != nil {
+		return ErrInvalidCursor
+	}
+	return nil
 }
 
 func (cur *Cursor) checkValueChanged() {
